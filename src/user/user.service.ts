@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { User } from '@prisma/client';
+import { PrismaService } from 'src/prisma.service';
+import { ValidationService } from 'src/validation/validation.service';
+import z from 'zod';
 
 @Injectable()
 export class UserService {
-  constructor() {}
+  constructor(
+    private prisma: PrismaService,
+    private validationService: ValidationService,
+  ) {}
 
   users = [
     {
@@ -29,25 +36,41 @@ export class UserService {
     return 'This Controller is using Service';
   }
 
-  getAllUsers({ search, page }) {
-    if (search) {
-      const filterUser = this.users.filter(
-        (user) =>
-          user.name.toLowerCase().includes(search.toLowerCase()) ||
-          user.email.toLowerCase().includes(search.toLowerCase()),
-      );
-      if (Number(page))
-        return {
-          page: Number(page),
-          data: this.users,
-        };
-      return filterUser;
-    }
-
-    return this.users;
+  async createUser(data: User): Promise<User> {
+    return await this.prisma.user.create({ data });
   }
 
-  getUserById(id: string) {
-    return this.users.find((user) => user.id === Number(id));
+  async getAllUsers() {
+    // if (search) {
+    //   const filterUser = this.users.filter(
+    //     (user) =>
+    //       user.name.toLowerCase().includes(search.toLowerCase()) ||
+    //       user.email.toLowerCase().includes(search.toLowerCase()),
+    //   );
+    //   if (Number(page))
+    //     return {
+    //       page: Number(page),
+    //       data: this.users,
+    //     };
+    //   return filterUser;
+    // }
+
+    // return this.users;
+    return await this.prisma.user.findMany();
+  }
+
+  async getUserById(id: number) {
+    /* 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥 Contoh implementasi validation service 
+    yang merupakan custom dynamic module yang kita buat */
+    const schema = z.number().min(2).max(255); //gunakan validasi zod lainnya;
+    const validated = this.validationService.validate(schema, id);
+    return await this.prisma.user.findUnique({ where: { id: validated } });
+  }
+
+  async updateUser(id: number, user: Partial<User>): Promise<User> {
+    return await this.prisma.user.update({
+      where: { id },
+      data: user,
+    });
   }
 }
